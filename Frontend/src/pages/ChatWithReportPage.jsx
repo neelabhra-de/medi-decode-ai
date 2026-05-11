@@ -1,23 +1,35 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { Bot, User, Send } from "lucide-react";
 import GlassCard from "../components/GlassCard";
-import { chatService } from "../services/mockApi";
+import { chatService, historyService } from "../services/mockApi";
 
 export default function ChatWithReportPage() {
   const [messages, setMessages] = useState([
     { role: "ai", text: "I reviewed your blood test. LDL is mildly elevated while fasting glucose remains normal." },
   ]);
   const [input, setInput] = useState("");
+  const [reportId, setReportId] = useState("");
   const endRef = useRef(null);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    (async () => {
+      const reports = await historyService.reports();
+      const first = Array.isArray(reports) ? reports[0] : null;
+      const id = first?._id || first?.id || "";
+      setReportId(id);
+    })();
+  }, []);
 
   const send = async () => {
     if (!input.trim()) return;
     const q = input;
     setMessages((prev) => [...prev, { role: "user", text: q }]);
     setInput("");
-    const data = await chatService.askReport(q);
+    const data = await chatService.askReport(q, reportId);
     setMessages((prev) => [...prev, { role: "ai", text: data.reply }]);
   };
 
@@ -33,7 +45,9 @@ export default function ChatWithReportPage() {
 
       <GlassCard className="flex h-[72vh] flex-col">
         <div className="mb-4 flex flex-wrap gap-2 text-xs">
-          {["Suggest a diet plan","Should I consult a doctor?","Explain LDL vs HDL"].map((s) => <button key={s} onClick={() => setInput(s)} className="rounded-full border border-cyan-200/20 px-3 py-1 text-cyan-100/75">{s}</button>)}
+          {["Suggest a diet plan", "Should I consult a doctor?", "Explain LDL vs HDL"].map((s) => (
+            <button key={s} onClick={() => setInput(s)} className="rounded-full border border-cyan-200/20 px-3 py-1 text-cyan-100/75">{s}</button>
+          ))}
         </div>
         <div className="flex-1 space-y-3 overflow-y-auto pr-1">
           {messages.map((m, i) => (

@@ -5,6 +5,24 @@ const { sendSuccess, sendError } = require("../utils/apiResponse");
 const { reportChatAssistant } = require("../services/geminiService");
 
 const reportChat = asyncHandler(async (req, res) => {
+  const legacyQuestion = req.body.message;
+  const legacyContext = req.body.reportContext;
+
+  // Legacy mode: /api/chat/report with {message, reportContext}
+  if (legacyQuestion && !req.body.reportId) {
+    const ai = await reportChatAssistant({
+      reportContext: legacyContext || "No report context provided",
+      userQuestion: legacyQuestion,
+    });
+
+    return sendSuccess(res, "Chat response generated", {
+      answer: ai.data?.answer || "No response",
+      reply: ai.data?.answer || "No response",
+      ai,
+    });
+  }
+
+  // New mode: /api/chat/report-chat with {reportId, question}
   const { reportId, question } = req.body;
   const report = await Report.findOne({ _id: reportId, userId: req.user._id });
   if (!report) return sendError(res, "Report not found", 404);
@@ -25,7 +43,12 @@ const reportChat = asyncHandler(async (req, res) => {
     { new: true, upsert: true }
   );
 
-  return sendSuccess(res, "Chat response generated", { answer: ai.data?.answer, chat, ai });
+  return sendSuccess(res, "Chat response generated", {
+    answer: ai.data?.answer,
+    reply: ai.data?.answer,
+    chat,
+    ai,
+  });
 });
 
 module.exports = { reportChat };
