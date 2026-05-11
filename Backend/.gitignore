@@ -1,0 +1,19 @@
+﻿# Node deps
+node_modules/
+
+# Build artifacts
+dist/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime
+uploads/
+tmp/
+coverage/
