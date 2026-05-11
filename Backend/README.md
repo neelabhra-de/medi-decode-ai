@@ -1,29 +1,41 @@
 ﻿# MediDecode AI Backend
 
-## Quick Start
+Production-structured, hackathon-ready backend with:
+- Node.js + Express
+- MongoDB Atlas (Mongoose)
+- Gemini API integration
+- JWT auth + secure middleware stack
 
-1. Copy `.env.example` to `.env`.
-2. Optional: set `GEMINI_API_KEY` and `MONGODB_URI`.
-3. Run:
+## Setup
+1. Copy `.env.example` to `.env` and fill values.
+2. Install deps: `npm install`
+3. Run dev server: `npm run dev`
 
-```bash
-npm install
-npm run dev
-```
+## Required Env
+- `PORT`
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `GEMINI_API_KEY`
+- `CLIENT_URL`
 
-Server: `http://localhost:5000`
-
-## API Endpoints
-
+## API Routes
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
-- `POST /api/upload/report` (auth + multipart field `file`)
-- `POST /api/upload/medicine` (auth + multipart field `file`)
-- `POST /api/chat/report` (auth)
-- `GET /api/history/reports` (auth)
-- `GET /api/history/medicines` (auth)
-- `GET /api/profile` (auth)
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `POST /api/reports/upload`
+- `GET /api/reports/history`
+- `GET /api/reports/:id`
+- `DELETE /api/reports/:id`
+- `POST /api/medicines/scan`
+- `GET /api/medicines/history`
+- `GET /api/medicines/:id`
+- `POST /api/chat/report-chat`
+- `GET /api/user/profile`
+- `PUT /api/user/update-profile`
+- `GET /api/dashboard/overview`
 
-## Demo Mode
-
-If Mongo/Gemini are missing, backend still works with in-memory data and safe mock AI summaries.
+## Notes
+- AI responses are awareness-only and include medical disclaimer.
+- Gemini model fallback is enabled for demo stability.
+- Routes use standardized response format: `{ success, message, data }`.

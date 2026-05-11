@@ -3,6 +3,7 @@ node_modules/
 
 # Build artifacts
 dist/
+coverage/
 
 # Env files
 .env
@@ -13,7 +14,9 @@ dist/
 *.log
 npm-debug.log*
 
-# Runtime
+# Runtime uploads/temp
 uploads/
 tmp/
-coverage/
+
+# Keep template upload dir in repo
+!src/uploads/.gitkeep

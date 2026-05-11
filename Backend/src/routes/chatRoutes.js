@@ -1,8 +1,10 @@
 ﻿const express = require("express");
-const auth = require("../middleware/auth");
-const { chatWithReport } = require("../controllers/chatController");
+const auth = require("../middlewares/authMiddleware");
+const validateRequest = require("../middlewares/validateRequest");
+const { reportChat } = require("../controllers/chatController");
+const { reportChatValidator } = require("../validators/chatValidator");
 
 const router = express.Router();
-router.post("/report", auth, chatWithReport);
+router.post("/report-chat", auth, reportChatValidator, validateRequest, reportChat);
 
 module.exports = router;

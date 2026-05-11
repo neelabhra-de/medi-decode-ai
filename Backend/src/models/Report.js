@@ -2,10 +2,12 @@
 
 const reportSchema = new mongoose.Schema(
   {
-    userId: { type: String, required: true },
-    fileName: { type: String, required: true },
-    summary: { type: String, required: true },
-    risk: { type: String, default: "moderate" },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    originalFile: { type: String, required: true },
+    extractedText: { type: String, default: "" },
+    aiSummary: { type: String, required: true },
+    abnormalParameters: [{ type: String }],
+    uploadedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

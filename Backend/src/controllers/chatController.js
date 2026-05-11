@@ -1,15 +1,31 @@
-﻿const { reportChatAssistant } = require("../services/geminiService");
-const { chats } = require("../data/memoryStore");
+﻿const Chat = require("../models/Chat");
+const Report = require("../models/Report");
+const asyncHandler = require("../utils/asyncHandler");
+const { sendSuccess, sendError } = require("../utils/apiResponse");
+const { reportChatAssistant } = require("../services/geminiService");
 
-async function chatWithReport(req, res) {
-  const { message, reportContext = "Blood report" } = req.body;
-  if (!message) return res.status(400).json({ message: "message required" });
+const reportChat = asyncHandler(async (req, res) => {
+  const { reportId, question } = req.body;
+  const report = await Report.findOne({ _id: reportId, userId: req.user._id });
+  if (!report) return sendError(res, "Report not found", 404);
 
-  const ai = await reportChatAssistant({ reportContext, userQuestion: message });
-  const reply = ai?.data?.answer || "Please consult your doctor for personalized interpretation.";
+  const reportContext = `Summary: ${report.aiSummary}\nAbnormal: ${(report.abnormalParameters || []).join(", ")}\nRaw: ${report.extractedText}`;
+  const ai = await reportChatAssistant({ reportContext, userQuestion: question });
 
-  chats.push({ userId: req.user.id, message, reply, createdAt: new Date().toISOString() });
-  return res.json({ reply, aiMeta: { success: ai.success, message: ai.message, modelUsed: ai?.data?.modelUsed } });
-}
+  const chat = await Chat.findOneAndUpdate(
+    { userId: req.user._id, reportId },
+    {
+      $push: {
+        messages: [
+          { role: "user", content: question },
+          { role: "assistant", content: ai.data?.answer || "No response" },
+        ],
+      },
+    },
+    { new: true, upsert: true }
+  );
 
-module.exports = { chatWithReport };
+  return sendSuccess(res, "Chat response generated", { answer: ai.data?.answer, chat, ai });
+});
+
+module.exports = { reportChat };

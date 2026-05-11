@@ -1,52 +1,39 @@
-﻿const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
-const User = require("../models/User");
-const { users } = require("../data/memoryStore");
-const { signToken } = require("../utils/jwt");
+﻿const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const { sendSuccess, sendError } = require("../utils/apiResponse");
+const { generateToken } = require("../utils/generateToken");
 
-const mongoOn = () => mongoose.connection.readyState === 1;
-
-async function signup(req, res) {
+const signup = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ message: "name, email, password required" });
+  const exists = await User.findOne({ email });
+  if (exists) return sendError(res, "Email already in use", 409);
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await User.create({ name, email, password });
+  const token = generateToken({ id: user._id, email: user.email });
+  res.cookie("token", token, { httpOnly: true, sameSite: "lax", secure: false, maxAge: 7 * 24 * 3600 * 1000 });
 
-  if (mongoOn()) {
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(409).json({ message: "Email already exists" });
-    const user = await User.create({ name, email, passwordHash });
-    const token = signToken(user);
-    return res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email } });
-  }
+  return sendSuccess(res, "Signup successful", { token, user: { id: user._id, name: user.name, email: user.email } }, 201);
+});
 
-  const exists = users.find((u) => u.email === email);
-  if (exists) return res.status(409).json({ message: "Email already exists" });
-  const user = { id: String(Date.now()), name, email, passwordHash };
-  users.push(user);
-  const token = signToken(user);
-  return res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email } });
-}
-
-async function login(req, res) {
+const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ message: "email and password required" });
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) return sendError(res, "Invalid credentials", 401);
 
-  if (mongoOn()) {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
-    const token = signToken(user);
-    return res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
-  }
+  const valid = await user.comparePassword(password);
+  if (!valid) return sendError(res, "Invalid credentials", 401);
 
-  const user = users.find((u) => u.email === email);
-  if (!user) return res.status(401).json({ message: "Invalid credentials" });
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return res.status(401).json({ message: "Invalid credentials" });
-  const token = signToken(user);
-  return res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
-}
+  const token = generateToken({ id: user._id, email: user.email });
+  res.cookie("token", token, { httpOnly: true, sameSite: "lax", secure: false, maxAge: 7 * 24 * 3600 * 1000 });
 
-module.exports = { signup, login };
+  return sendSuccess(res, "Login successful", { token, user: { id: user._id, name: user.name, email: user.email } });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  res.clearCookie("token");
+  return sendSuccess(res, "Logout successful", null);
+});
+
+const me = asyncHandler(async (req, res) => sendSuccess(res, "Profile fetched", req.user));
+
+module.exports = { signup, login, logout, me };
