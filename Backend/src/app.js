@@ -10,7 +10,7 @@ const profileRoutes = require("./routes/profileRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
-app.use(cors({ origin: env.frontendOrigin, credentials: true }));
+app.use(cors({ origin: env.clientUrl, credentials: true }));
 app.use(express.json());
 
 app.get("/health", (req, res) => res.json({ ok: true, service: "MediDecode AI API" }));

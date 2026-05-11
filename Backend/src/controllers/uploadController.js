@@ -2,14 +2,23 @@
 const Report = require("../models/Report");
 const MedicineScan = require("../models/MedicineScan");
 const { reports, medicines } = require("../data/memoryStore");
-const { summarizeMedicalText } = require("../services/geminiService");
+const { analyzeMedicalReport, analyzeMedicine } = require("../services/geminiService");
 
 const mongoOn = () => mongoose.connection.readyState === 1;
 
 async function uploadReport(req, res) {
   const fileName = req.file?.originalname || "report.pdf";
-  const summary = await summarizeMedicalText(`Analyze report file: ${fileName}`, "report");
-  const row = { userId: req.user.id, fileName, summary, risk: "moderate", createdAt: new Date().toISOString() };
+  const reportText = `Uploaded file name: ${fileName}`;
+  const ai = await analyzeMedicalReport(reportText);
+
+  const row = {
+    userId: req.user.id,
+    fileName,
+    summary: ai?.data?.summary || "Report analyzed",
+    risk: ai?.data?.abnormalParameters?.length ? "moderate" : "low",
+    aiData: ai?.data || null,
+    createdAt: new Date().toISOString(),
+  };
 
   if (mongoOn()) {
     const saved = await Report.create(row);
@@ -23,15 +32,20 @@ async function uploadReport(req, res) {
 
 async function uploadMedicine(req, res) {
   const fileName = req.file?.originalname || "medicine.jpg";
-  const ai = await summarizeMedicalText(`Analyze medicine label file: ${fileName}`, "medicine");
+  const ai = await analyzeMedicine({
+    medicineName: "Uploaded Medicine",
+    ocrText: `Uploaded file name: ${fileName}`,
+    imageText: "",
+  });
+
   const row = {
     userId: req.user.id,
     fileName,
-    medicineName: "Amoxicillin 500mg",
-    dosage: "1 capsule every 8 hours",
-    sideEffects: ["Nausea", "Mild rash", "Stomach discomfort"],
-    precautions: ["Complete full course", "Avoid alcohol", "Consult doctor if rash appears"],
-    aiSummary: ai,
+    medicineName: ai?.data?.medicineName || "Unknown Medicine",
+    dosage: ai?.data?.dosage || "Follow doctor guidance",
+    sideEffects: ai?.data?.sideEffects || [],
+    precautions: ai?.data?.precautions || [],
+    aiSummary: ai?.data?.purpose || "",
     createdAt: new Date().toISOString(),
   };
 
